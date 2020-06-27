@@ -1,30 +1,33 @@
 #pragma once
 
 #include<string>
-using namespace std;
 
-// ndl = Nodo Di Lista
-struct ndl
-{
-	string priorità = "";
-	int val = -1;
-	ndl* successivo = NULL;
-};
+using namespace std;
 
 class ListaOrdinata
 {
 public:
-	int RimuoviMinimo()
+	// Rimuovi il primo nodo della lista e ritornane il valore
+	int EstraiMinimo()
 	{
-		int minimo = lista->val;
+		if (lista != NULL)
+		{
+			int minimo = lista->val;
 
-		ndl* temp = lista->successivo;
-		free(lista);
-		lista = temp;
+			ndl* temp = lista->successivo;
+			free(lista);
+			lista = temp;
 
-		return minimo;
+			return minimo;
+		}
+		else
+		{
+			return -1;
+		}
 	}
 
+	// Inserisci nella giusta posizione il seguente valore con la
+	//	la seguente priorità
 	void Inserisci(string priorità, int val)
 	{
 		ndl* temp = lista;
@@ -39,5 +42,14 @@ public:
 	}
 
 private:
+	// Struct contenente il singolo nodo della lista (ndl)
+	struct ndl
+	{
+		string priorità = "";	// Priorità secondo la quale viene
+								//	ordinata la lista (alfabeticamente)
+		int val = -1;
+		ndl* successivo = NULL;
+	};
+
 	ndl* lista;
 };
