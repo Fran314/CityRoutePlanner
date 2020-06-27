@@ -2,8 +2,7 @@
 #include<fstream>
 #include<string>
 #include<vector>
-
-#define N 27560
+#include"ListaOrdinata.h"
 
 using namespace std;
 
@@ -21,13 +20,34 @@ struct arco_walk
 	int d_walk;
 };
 
-vector<arco_pt> grafo_pt[N];
-vector<arco_walk> grafo_walk[N];
+vector<arco_pt>* grafo_pt;
+vector<arco_walk>* grafo_walk;
 
-
-int main()
+void inizializzaGrafi()
 {
 	ifstream ntd;
+	int N = 0;
+	ntd.open("network_nodes.csv");
+
+	cout << "Calcolo di N... ";
+	string last_line, curr_line;
+	while (ntd.good())
+	{
+		last_line = curr_line;
+		getline(ntd, curr_line);
+		if (!ntd.good())
+		{
+			last_line;
+			N = atoi(last_line.substr(0, last_line.find(";")).c_str()) + 1;
+		}
+	}
+	ntd.close();
+	cout << N << endl;
+
+	grafo_pt = new vector<arco_pt>[N];
+	grafo_walk = new vector<arco_walk>[N];
+
+	cout << "Lettura di network_temporal_day (potrebbe richiedere molto tempo)... ";
 	ntd.open("network_temporal_day.csv");
 	while (ntd.good())
 	{
@@ -57,7 +77,10 @@ int main()
 
 		grafo_pt[indice].push_back(nuovo_arco);
 	}
+	ntd.close();
+	cout << "Fatto." << endl;
 
+	cout << "Lettura di network_walk (potrebbe richiedere molto tempo)... ";
 	ntd.open("network_walk.csv");
 	while (ntd.good())
 	{
@@ -79,7 +102,13 @@ int main()
 
 		grafo_walk[indice].push_back(nuovo_arco);
 	}
-	cout << grafo_walk[3].front().to_stop << ", " << grafo_walk[3].front().d_walk << endl;
+	ntd.close();
+	cout << "Fatto." << endl;
+}
+
+int main()
+{
+	inizializzaGrafi();
 
 	return 0;
 }
