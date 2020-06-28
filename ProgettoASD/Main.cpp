@@ -24,11 +24,22 @@ struct arco_walk
 	int d_walk;
 };
 
+// Struct contenente le etichette di un nodo utilizzate nell'algoritmo
+//	di pathfinding, simile alle etichette f e J citate nella pagina
+//	Wikipedia per l'algoritmo di Dijkstra
 struct etichetta_nodo
 {
 	bool visitato = false;
-	int arr_time = INT_MAX;
+	int arr_time = INT_MAX;	// Ora di arrivo al nodo nel percorso
+							//	ottimale.
+							// Svolge la stessa funzione della distanza
+							//	nell'algoritmo di Dijkstra
+
 	int last_node = -1;
+	int route_type = -2;
+	int dep_time = 0;	// Ora di partenza dell'arco che da last_node
+						//	raggiunge il nodo corrispondente a questa
+						//	etichetta
 };
 
 
@@ -53,10 +64,13 @@ vector<arco_walk>* grafo_walk;	// Grafo contenente solo gli archi
 //	verranno trattati in modi diversi, poiché gli archi dei trasporti
 //	pubblici richiedono un dep_time non esistente per le camminate
 
-// Inizializza i grafi
+
 void inizializzaGrafi()
 {
 	ifstream file_corrente;
+	string sottoriga;	// Stringa contenente la sottoriga
+						//	corrispondente al i-esimo campo della
+						//	riga corrente
 
 	cout << "Calcolo di N... ";
 	file_corrente.open("network_nodes.csv");
@@ -83,11 +97,9 @@ void inizializzaGrafi()
 
 	cout << "Lettura di network_temporal_day (potrebbe richiedere molto tempo)... ";
 	file_corrente.open("network_temporal_day.csv");
+	getline(file_corrente, sottoriga);	// Ignora la prima riga
 	while (!file_corrente.eof())
 	{
-		string sottoriga;	// Stringa contenente la sottoriga
-							//	corrispondente al i-esimo campo della
-							//	riga corrente
 		arco_pt nuovo_arco;
 
 		getline(file_corrente, sottoriga, ';');
@@ -99,11 +111,22 @@ void inizializzaGrafi()
 
 		getline(file_corrente, sottoriga, ';');
 		int dep_time = atoi(sottoriga.c_str());
-		nuovo_arco.dep_time = dep_time;
+		nuovo_arco.dep_time = dep_time - 1481500800;
+			// Il tempo fornito dai dati è in Unix time, il che vuol
+			//	dire che lo 0 corrisponde al 01/01/1970. I dati presi
+			//	corrispondono al 12/12/2016. L'ora esatta del 00:00:00
+			//	del 12/12/2016 corrisponde al tempo Unix 1481500800,
+			//	quindi sottraendo questo valore ai dati otterremo i
+			//	tempi di partenza e di arrivo dei bus relativi alla
+			//	mezzanotte, come in una normale tabella dei mezzi.
+			// Questa modifica è fatta per semplificare l'inserimento
+			//	dell'orario di partenza da input, potendo indicare
+			//	semplicemente l'ora del giorno invece del tempo in
+			//	tempo Unix
 
 		getline(file_corrente, sottoriga, ';');
 		int arr_time = atoi(sottoriga.c_str());
-		nuovo_arco.arr_time = arr_time;
+		nuovo_arco.arr_time = arr_time - 1481500800;	// Vedi sopra
 
 		getline(file_corrente, sottoriga, ';');
 		int route_type = atoi(sottoriga.c_str());
@@ -117,35 +140,62 @@ void inizializzaGrafi()
 	file_corrente.close();
 	cout << "Fatto." << endl;
 
-	cout << "Lettura di network_walk (potrebbe richiedere molto tempo)... ";
+	cout << "Lettura di network_walk (potrebbe richiedere un po' di tempo)... ";
 	file_corrente.open("network_walk.csv");
+	getline(file_corrente, sottoriga);	// Ignora la prima riga
 	while (!file_corrente.eof())
 	{
-		string sottoriga;	// Stringa contenente la sottoriga
-							//	corrispondente al i-esimo campo della
-							//	riga corrente
-		arco_walk nuovo_arco;
+		arco_walk nuovo_arco_andata, nuovo_arco_ritorno;
 
 		getline(file_corrente, sottoriga, ';');
 		int indice = atoi(sottoriga.c_str());
+		nuovo_arco_ritorno.to_stop = indice;
 
 		getline(file_corrente, sottoriga, ';');
 		int to_stop = atoi(sottoriga.c_str());
-		nuovo_arco.to_stop = to_stop;
+		nuovo_arco_andata.to_stop = to_stop;
 
 		// Ignora il terzo dato
 		getline(file_corrente, sottoriga, ';');
 
 		getline(file_corrente, sottoriga);
 		int d_walk = atoi(sottoriga.c_str());
-		nuovo_arco.d_walk = d_walk;
+		nuovo_arco_andata.d_walk = d_walk;
+		nuovo_arco_ritorno.d_walk = d_walk;
 
-		grafo_walk[indice].push_back(nuovo_arco);
+		grafo_walk[indice].push_back(nuovo_arco_andata);
+		grafo_walk[to_stop].push_back(nuovo_arco_ritorno);
 	}
 	file_corrente.close();
 	cout << "Fatto." << endl;
 }
 
+// Funzione che converte un tempo in secondi a partire dalla mezzanotte
+//	in una stringa della forma hh:mm:ss
+string intToTimeString(int time)
+{
+	int hours = time / 3600;
+	int minutes = (time / 60) % 60;
+	int seconds = time % 60;
+
+	string to_return = "";
+
+	if (hours >= 10) to_return += to_string(hours) + ":";
+	else to_return += "0" + to_string(hours) + ":";
+
+	if (minutes >= 10) to_return += to_string(minutes) + ":";
+	else to_return += "0" + to_string(minutes) + ":";
+
+	if (seconds >= 10) to_return += to_string(seconds);
+	else to_return += "0" + to_string(seconds);
+
+	return to_return;
+}
+
+//--- TFS = Time First Search ---//
+// L'algoritmo, seppur l'avessi pensato originariamente come una
+//	modifica del BFS (da cui il nome TFS), è in realtà una versione
+//	riadattata dell'algoritmo di Dijkstra
 void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massimo)
 {
 	etichetta_nodo* nodi = new etichetta_nodo[N];
@@ -154,16 +204,15 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 	ListaOrdinata coda;
 	coda.Inserisci(to_string(tempo_iniziale) + "-" + to_string(nodo_iniziale), nodo_iniziale);
 
-	int u = nodo_iniziale;
+	bool guardia = true;
 
-	while (!coda.Vuota() && !nodi[nodo_finale].visitato && nodi[u].arr_time <= tempo_iniziale + tempo_massimo)
+	while (!coda.Vuota() && !nodi[nodo_finale].visitato)
 	{
-		u = coda.EstraiMinimo();
-		cout << u << endl;
+		int u = coda.EstraiMinimo();
 		nodi[u].visitato = true;
+		if(nodi[u].arr_time - tempo_iniziale> tempo_massimo) break;
 		for (arco_pt a : grafo_pt[u])
 		{
-			cout << u << ", " << a.to_stop << endl;
 			if (a.dep_time >= nodi[u].arr_time)
 			{
 				if (!nodi[a.to_stop].visitato && a.arr_time < nodi[a.to_stop].arr_time)
@@ -171,16 +220,64 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 					coda.Rimuovi(to_string(nodi[a.to_stop].arr_time) + "-" + to_string(a.to_stop));
 					nodi[a.to_stop].arr_time = a.arr_time;
 					nodi[a.to_stop].last_node = u;
+					nodi[a.to_stop].route_type = a.route_type;
+					nodi[a.to_stop].dep_time = a.dep_time;
 					coda.Inserisci(to_string(a.arr_time) + "-" + to_string(a.to_stop), a.to_stop);
 				}
+			}
+		}
+		for (arco_walk a : grafo_walk[u])
+		{
+			int arr_time = nodi[u].arr_time + a.d_walk;
+
+			if (!nodi[a.to_stop].visitato && arr_time < nodi[a.to_stop].arr_time)
+			{
+				coda.Rimuovi(to_string(nodi[a.to_stop].arr_time) + "-" + to_string(a.to_stop));
+				nodi[a.to_stop].arr_time = arr_time;
+				nodi[a.to_stop].last_node = u;
+				nodi[a.to_stop].route_type = -1;
+				nodi[a.to_stop].dep_time = nodi[u].arr_time;
+				coda.Inserisci(to_string(arr_time) + "-" + to_string(a.to_stop), a.to_stop);
 			}
 		}
 	}
 
 	int x = nodo_finale;
-	while (x != -1)
+	while (nodi[x].last_node != -1)
 	{
-		cout << x << " alle ore " << nodi[x].arr_time << endl;
+		cout << "[" << intToTimeString(nodi[x].dep_time) << "-" << intToTimeString(nodi[x].arr_time) << "] da ";
+		cout << nodi[x].last_node << " a " << x;
+		switch (nodi[x].route_type)
+		{
+		case -1:
+			cout << " camminando (walk)";
+			break;
+		case 0:
+			cout << " con il tram";
+			break;
+		case 1:
+			cout << " con la metropolitana (subway)";
+			break;
+		case 2:
+			cout << " con il treno (rail)";
+			break;
+		case 3:
+			cout << " con il bus";
+			break;
+		case 4:
+			cout << " con il traghetto (ferry)";
+			break;
+		case 5:
+			cout << " con il cablecar";
+			break;
+		case 6:
+			cout << " con la gondola";
+			break;
+		case 7:
+			cout << " con la funicolare";
+			break;
+		}
+		cout << endl;
 		x = nodi[x].last_node;
 	}
 }
@@ -191,26 +288,23 @@ int main()
 
 	int nodo_iniziale, nodo_finale, tempo_iniziale, tempo_massimo;
 
-	/*
-	cout << "Inserire nodo iniziale: ";
-	cin >> nodo_iniziale;
+	while (true)
+	{
+		cout << "Inserire nodo iniziale: ";
+		cin >> nodo_iniziale;
+		cout << "Inserire nodo finale: ";
+		cin >> nodo_finale;
+		cout << "Inserire tempo di partenza (in termini di secondi dalla mezzanotte, da 0 a 86399): ";
+		cin >> tempo_iniziale;
+		cout << "Inserire tempo massimo (in termini di secondi): ";
+		cin >> tempo_massimo;
 
-	cout << "Inserire nodo finale: ";
-	cin >> nodo_finale;
+		cout << endl;
 
-	cout << "Inserire tempo di partenza: ";
-	cin >> tempo_iniziale;
+		TFS(nodo_iniziale, nodo_finale, tempo_iniziale, tempo_massimo);
 
-	cout << "Inserire tempo massimo: ";
-	cin >> tempo_massimo;
-	*/
-
-	nodo_iniziale = 14149;
-	nodo_finale = 14157;
-	tempo_iniziale = 1481558690;
-	tempo_massimo = 10000;
-
-	TFS(nodo_iniziale, nodo_finale, tempo_iniziale, tempo_massimo);
+		cout << endl << endl;
+	}
 
 	return 0;
 }
