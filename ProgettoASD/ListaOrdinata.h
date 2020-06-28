@@ -38,6 +38,7 @@ public:
 				temp = temp->successivo;
 			}
 			ndl* nuovo_nodo = new ndl;
+			nuovo_nodo->priorità = priorità;
 		}
 	}
 
