@@ -31,7 +31,15 @@ public:
 	void Inserisci(string priorità, int val)
 	{
 		ndl* temp = lista;
-		if (temp != NULL)
+		if (temp == NULL || priorità.compare(temp->priorità) < 0)
+		{
+			ndl* nuovo_nodo = new ndl;
+			nuovo_nodo->priorità = priorità;
+			nuovo_nodo->val = val;
+			nuovo_nodo->successivo = lista;
+			lista = nuovo_nodo;
+		}
+		else
 		{
 			while (temp->successivo != NULL && priorità.compare(temp->successivo->priorità) > 0)
 			{
@@ -39,8 +47,54 @@ public:
 			}
 			ndl* nuovo_nodo = new ndl;
 			nuovo_nodo->priorità = priorità;
+			nuovo_nodo->val = val;
+			nuovo_nodo->successivo = temp->successivo;
+			temp->successivo = nuovo_nodo;
 		}
 	}
+
+	void Rimuovi(string priorità)
+	{
+		ndl* temp = lista;
+		if (temp != NULL)
+		{
+			if (priorità.compare(temp->priorità) == 0)
+			{
+				lista = lista->successivo;
+				free(temp);
+			}
+			else
+			{
+				while (temp->successivo != NULL && priorità.compare(temp->successivo->priorità) > 0)
+				{
+					temp = temp->successivo;
+				}
+				if (temp->successivo != NULL && priorità.compare(temp->successivo->priorità) == 0)
+				{
+					ndl* temp2 = temp->successivo;
+					temp->successivo = temp->successivo->successivo;
+					free(temp2);
+				}
+			}
+		}
+	}
+
+	bool Vuota()
+	{
+		return (lista == NULL);
+	}
+
+	/*
+	void Stampa()
+	{
+		ndl* temp = lista;
+		while (temp != NULL)
+		{
+			cout << temp->priorità << ", " << temp->val << endl;
+			temp = temp->successivo;
+		}
+	}
+	*/
 
 private:
 	// Struct contenente il singolo nodo della lista (ndl)
@@ -52,5 +106,5 @@ private:
 		ndl* successivo = NULL;
 	};
 
-	ndl* lista;
+	ndl* lista = NULL;
 };

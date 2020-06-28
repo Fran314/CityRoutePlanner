@@ -24,6 +24,13 @@ struct arco_walk
 	int d_walk;
 };
 
+struct etichetta_nodo
+{
+	bool visitato = false;
+	int arr_time = INT_MAX;
+	int last_node = -1;
+};
+
 
 int N;	// Valore massimo (+1) degli indici dei nodi.
 		// N.B: questo NON equivale al numero massimo di nodi. Il
@@ -59,7 +66,7 @@ void inizializzaGrafi()
 	//	valore dell'indice dell'ultimo nodo (quindi il valore massimo
 	//	degli indici, poiché elencati in ordine crescente) è scritto
 	//	sulla penultima riga
-	while (file_corrente.eof())
+	while (!file_corrente.eof())
 	{
 		riga_precedente = riga_corrente;
 		getline(file_corrente, riga_corrente);
@@ -76,7 +83,7 @@ void inizializzaGrafi()
 
 	cout << "Lettura di network_temporal_day (potrebbe richiedere molto tempo)... ";
 	file_corrente.open("network_temporal_day.csv");
-	while (file_corrente.eof())
+	while (!file_corrente.eof())
 	{
 		string sottoriga;	// Stringa contenente la sottoriga
 							//	corrispondente al i-esimo campo della
@@ -112,7 +119,7 @@ void inizializzaGrafi()
 
 	cout << "Lettura di network_walk (potrebbe richiedere molto tempo)... ";
 	file_corrente.open("network_walk.csv");
-	while (file_corrente.eof())
+	while (!file_corrente.eof())
 	{
 		string sottoriga;	// Stringa contenente la sottoriga
 							//	corrispondente al i-esimo campo della
@@ -139,9 +146,71 @@ void inizializzaGrafi()
 	cout << "Fatto." << endl;
 }
 
+void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massimo)
+{
+	etichetta_nodo* nodi = new etichetta_nodo[N];
+	nodi[nodo_iniziale].arr_time = tempo_iniziale;
+
+	ListaOrdinata coda;
+	coda.Inserisci(to_string(tempo_iniziale) + "-" + to_string(nodo_iniziale), nodo_iniziale);
+
+	int u = nodo_iniziale;
+
+	while (!coda.Vuota() && !nodi[nodo_finale].visitato && nodi[u].arr_time <= tempo_iniziale + tempo_massimo)
+	{
+		u = coda.EstraiMinimo();
+		cout << u << endl;
+		nodi[u].visitato = true;
+		for (arco_pt a : grafo_pt[u])
+		{
+			cout << u << ", " << a.to_stop << endl;
+			if (a.dep_time >= nodi[u].arr_time)
+			{
+				if (!nodi[a.to_stop].visitato && a.arr_time < nodi[a.to_stop].arr_time)
+				{
+					coda.Rimuovi(to_string(nodi[a.to_stop].arr_time) + "-" + to_string(a.to_stop));
+					nodi[a.to_stop].arr_time = a.arr_time;
+					nodi[a.to_stop].last_node = u;
+					coda.Inserisci(to_string(a.arr_time) + "-" + to_string(a.to_stop), a.to_stop);
+				}
+			}
+		}
+	}
+
+	int x = nodo_finale;
+	while (x != -1)
+	{
+		cout << x << " alle ore " << nodi[x].arr_time << endl;
+		x = nodi[x].last_node;
+	}
+}
+
 int main()
 {
 	inizializzaGrafi();
+
+	int nodo_iniziale, nodo_finale, tempo_iniziale, tempo_massimo;
+
+	/*
+	cout << "Inserire nodo iniziale: ";
+	cin >> nodo_iniziale;
+
+	cout << "Inserire nodo finale: ";
+	cin >> nodo_finale;
+
+	cout << "Inserire tempo di partenza: ";
+	cin >> tempo_iniziale;
+
+	cout << "Inserire tempo massimo: ";
+	cin >> tempo_massimo;
+	*/
+
+	nodo_iniziale = 14149;
+	nodo_finale = 14157;
+	tempo_iniziale = 1481558690;
+	tempo_massimo = 10000;
+
+	TFS(nodo_iniziale, nodo_finale, tempo_iniziale, tempo_massimo);
 
 	return 0;
 }
