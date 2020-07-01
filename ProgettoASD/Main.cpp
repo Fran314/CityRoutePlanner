@@ -63,6 +63,16 @@ vector<arco_walk>* grafo_walk;	// Grafo contenente solo gli archi
 //	gli archi dei trasporti pubblici e gli archi delle camminate
 //	verranno trattati in modi diversi, poiché gli archi dei trasporti
 //	pubblici richiedono un dep_time non esistente per le camminate
+bool* esiste;	// Array contenente un booleano per ogni indice.
+				// Il motivo per cui questo array esiste è che non ogni
+				//	indice è associato ad un nodo, e quindi un indice
+				//	inserito dall'utente potrebbe non corrispondere a
+				//	nessun nodo iniziale/finale. Questo array viene
+				//	utilizzato per controllare quali indici sono
+				//	associati a dei nodi, ovvero per sapere se dato
+				//	[i] indice, se il nodo i-esimo esiste. L'i-esimo
+				//	booleano di questo array è true se esiste un nodo
+				//	associato all'indice i, false altrimenti
 
 
 void inizializzaGrafi()
@@ -92,8 +102,25 @@ void inizializzaGrafi()
 	N = atoi(riga_precedente.substr(0, riga_precedente.find(";")).c_str()) + 1;
 	cout << N << endl;
 
+	esiste = new bool[N];
 	grafo_pt = new vector<arco_pt>[N];
 	grafo_walk = new vector<arco_walk>[N];
+
+	cout << "Lettura di network_nodes... ";
+	file_corrente.open("network_nodes.csv");
+	getline(file_corrente, sottoriga);	// Ignora la prima riga
+	for (int i = 0; i < N; i++) esiste[i] = false;
+	while (!file_corrente.eof())
+	{
+		getline(file_corrente, sottoriga, ';');
+		int indice = atoi(sottoriga.c_str());
+		esiste[indice] = true;
+
+		// Ignora il resto della riga
+		getline(file_corrente, sottoriga);
+	}
+	file_corrente.close();
+	cout << "Fatto." << endl;
 
 	cout << "Lettura di network_temporal_day (potrebbe richiedere molto tempo)... ";
 	file_corrente.open("network_temporal_day.csv");
@@ -112,17 +139,17 @@ void inizializzaGrafi()
 		getline(file_corrente, sottoriga, ';');
 		int dep_time = atoi(sottoriga.c_str());
 		nuovo_arco.dep_time = dep_time - 1481500800;
-			// Il tempo fornito dai dati è in Unix time, il che vuol
-			//	dire che lo 0 corrisponde al 01/01/1970. I dati presi
-			//	corrispondono al 12/12/2016. L'ora esatta del 00:00:00
-			//	del 12/12/2016 corrisponde al tempo Unix 1481500800,
-			//	quindi sottraendo questo valore ai dati otterremo i
-			//	tempi di partenza e di arrivo dei bus relativi alla
-			//	mezzanotte, come in una normale tabella dei mezzi.
-			// Questa modifica è fatta per semplificare l'inserimento
-			//	dell'orario di partenza da input, potendo indicare
-			//	semplicemente l'ora del giorno invece del tempo in
-			//	tempo Unix
+		// Il tempo fornito dai dati è in Unix time, il che vuol
+		//	dire che lo 0 corrisponde al 01/01/1970. I dati presi
+		//	corrispondono al 12/12/2016. L'ora esatta del 00:00:00
+		//	del 12/12/2016 corrisponde al tempo Unix 1481500800,
+		//	quindi sottraendo questo valore ai dati otterremo i
+		//	tempi di partenza e di arrivo dei bus relativi alla
+		//	mezzanotte, come in una normale tabella dei mezzi.
+		// Questa modifica è fatta per semplificare l'inserimento
+		//	dell'orario di partenza da input, potendo indicare
+		//	semplicemente l'ora del giorno invece del tempo in
+		//	tempo Unix
 
 		getline(file_corrente, sottoriga, ';');
 		int arr_time = atoi(sottoriga.c_str());
@@ -278,11 +305,30 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 	//	posizione). La scelta di mettere un trattino tra i due valori
 	//	è puramente cosmesi estetica dei dati.
 
+	bool sforato_tempo_massimo = false;
+
 	while (!coda.Vuota() && !etichette[nodo_finale].visitato)
 	{
 		int u = coda.EstraiMinimo();
 		etichette[u].visitato = true;
-		if(etichette[u].arr_time - tempo_iniziale> tempo_massimo) break;
+		if (etichette[u].arr_time - tempo_iniziale > tempo_massimo)
+		{
+			// Se il tempo impiegato per raggiungere il nodo che stiamo
+			//	analizzando è maggiore del tempo massimo, allora poiché
+			//	non abbiamo analizzato ancora il nodo finale (infatti
+			//	altrimenti saremmo usciti dal while), sappiamo che
+			//	anche fosse possibile raggiungerlo, lo raggiungeremmo
+			//	dopo questo nodo e quindi dopo il tempo massimo. Allora
+			//	termina il while.
+			// N.B: anche se il nodo che stiamo analizzando fosse il
+			//	nodo finale, l'algoritmo dovrebbe dare come risultato
+			//	che era impossibile raggiungere il nodo entro il tempo
+			//	massimo. Per questo motivo, nell'output oltre il while,
+			//	viene prima controllato che non sia stato sforato il
+			//	tempo massimo.
+			sforato_tempo_massimo = true;
+			break;
+		}
 
 		// Gli archi rappresentanti trasporti pubblici e gli archi
 		//	rappresentanti camminate vengono trattati in modo
@@ -331,43 +377,86 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 		}
 	}
 
-	int x = nodo_finale;
-	while (etichette[x].last_node != -1)
+	if (sforato_tempo_massimo)
 	{
-		cout << "[" << intToTimeString(etichette[x].dep_time) << "-" << intToTimeString(etichette[x].arr_time) << "] da ";
-		cout << etichette[x].last_node << " a " << x;
-		switch (etichette[x].route_type)
+		cout << "Non e' stato possibile raggiungere il nodo finale entro il tempo massimo";
+	}
+	if (etichette[nodo_finale].visitato)
+	{
+		// Percorso trovato: stampa il percorso
+
+		int x = nodo_finale;
+		while (etichette[x].last_node != -1)
 		{
-		case -1:
-			cout << " camminando (walk)";
-			break;
-		case 0:
-			cout << " con il tram";
-			break;
-		case 1:
-			cout << " con la metropolitana (subway)";
-			break;
-		case 2:
-			cout << " con il treno (rail)";
-			break;
-		case 3:
-			cout << " con il bus";
-			break;
-		case 4:
-			cout << " con il traghetto (ferry)";
-			break;
-		case 5:
-			cout << " con il cablecar";
-			break;
-		case 6:
-			cout << " con la gondola";
-			break;
-		case 7:
-			cout << " con la funicolare";
-			break;
+			cout << "[" << intToTimeString(etichette[x].dep_time) << "-" << intToTimeString(etichette[x].arr_time) << "] da ";
+			cout << etichette[x].last_node << " a " << x;
+			switch (etichette[x].route_type)
+			{
+			case -1:
+				cout << " camminando (walk)";
+				break;
+			case 0:
+				cout << " con il tram";
+				break;
+			case 1:
+				cout << " con la metropolitana (subway)";
+				break;
+			case 2:
+				cout << " con il treno (rail)";
+				break;
+			case 3:
+				cout << " con il bus";
+				break;
+			case 4:
+				cout << " con il traghetto (ferry)";
+				break;
+			case 5:
+				cout << " con il cablecar";
+				break;
+			case 6:
+				cout << " con la gondola";
+				break;
+			case 7:
+				cout << " con la funicolare";
+				break;
+			}
+			cout << endl;
+			x = etichette[x].last_node;
 		}
-		cout << endl;
-		x = etichette[x].last_node;
+	}
+	else
+	{
+		// Se siamo arrivati a questo blocco di codice è perché il
+		//	il while è stato terminato perché la coda è vuota e
+		//	l'ultimo nodo analizzato NON era quello finale. Questa
+		//	osservazione va fatta poiché nel raro caso in cui nella
+		//	coda fosse rimasto un solo nodo che fosse anche quello
+		//	finale e che questo non avesse vicini da aggiungere alla
+		//	coda, allora avremmo trovato il percorso ANCHE SE la coda
+		//	al termine dell'algoritmo era vuota. Per risolvere questo
+		//	problema, prima controlliamo che il nodo finale non sia
+		//	stato effettivamente trovato
+		// Non è stato trovato nessun percorso perché la coda, ad un
+		//	certo punto dell'algoritmo, era vuota.
+		// Allora non esistono percorsi che utilizzino solo mezzi del
+		//	lunedì per arrivare dal nodo finale.
+
+		// N.B: sono quasi sicuro che in realtà non possa mai accadere
+		//	che, dati due nodi esistenti, l'algoritmo su quei due input
+		//	si arresti per coda vuota. Infatti gli archi di camminata
+		//	(che non dipendono da un'ora di partenza fissata) rendono
+		//	il grafo connesso. Inoltre, anche se non esistono archi di
+		//	trasporti pubblici oltre una certa ora del lunedì, gli
+		//	archi di camminata esistono indipendentemente dall'ora,
+		//	quindi supponendo di avere sufficiente tempo massimo, è
+		//	possibile completare qualsiasi percorso al più solo
+		//	camminando.
+		// Tuttavia, per completezza di codice (e per essere sicuro che
+		//	funzioni su tutti gli input (di file) possibili, quindi
+		//	anche quelli dove non sono garantite le proprietà appena
+		//	citate), ho deciso di inserire anche questo caso di output.
+
+		cout << "Non e' stato possibile completare il percorso poiche' i due nodi non sono connessi a partire dall'ora iniziale data" << endl;
 	}
 }
 
@@ -385,17 +474,91 @@ int main()
 	// Quindi, nel caso si volesse testare il programma con più di un
 	//	percorso, questo ciclo while permette di testarne più di uno
 	//	senza dover ricaricare i dati degli archi.
+
 	while (true)
 	{
-		cout << "Inserire nodo iniziale (o inserire -1 per uscire): ";
-		cin >> nodo_iniziale;
+		bool ripeti_input = true;
+		do
+		{
+			cout << "Inserire l'indice del nodo iniziale (o inserire -1 per uscire): ";
+			cin >> nodo_iniziale;
+			if (nodo_iniziale == -1 || (nodo_iniziale >= 0 && nodo_iniziale < N && esiste[nodo_iniziale]))
+				ripeti_input = false;
+
+			if(ripeti_input)
+				cout << "Indice non esistente. ";
+		} while (ripeti_input);
 		if (nodo_iniziale == -1) break;
-		cout << "Inserire nodo finale: ";
-		cin >> nodo_finale;
-		cout << "Inserire tempo di partenza (in termini di secondi dalla mezzanotte, da 0 a 86399): ";
-		cin >> tempo_iniziale;
-		cout << "Inserire tempo massimo (in termini di secondi): ";
-		cin >> tempo_massimo;
+
+		ripeti_input = true;
+		do
+		{
+			cout << "Inserire l'indice del nodo finale: ";
+			cin >> nodo_finale;
+			if (nodo_finale >= 0 && nodo_finale < N && esiste[nodo_finale])
+				ripeti_input = false;
+
+			if (ripeti_input)
+				cout << "Indice non esistente. ";
+		} while (ripeti_input);
+
+		ripeti_input = true;
+		do
+		{
+			string input = "";
+			cout << "Inserire tempo di partenza [formato hh:mm:ss]: ";
+			cin >> input;
+
+			if (input.length() >= 8)
+			{
+				if (input[2] == ':' && input[5] == ':' && isdigit(input[0]) &&
+					isdigit(input[1]) && isdigit(input[3]) && isdigit(input[4]) &&
+					isdigit(input[6]) && isdigit(input[7]))
+				{
+					int ore = atoi(input.substr(0, 2).c_str());
+					int minuti = atoi(input.substr(3, 2).c_str());
+					int secondi = atoi(input.substr(6, 2).c_str());
+
+					if (ore < 24 && minuti < 60 && secondi < 60)
+					{
+						tempo_iniziale = (ore * 3600) + (minuti * 60) + secondi;
+						ripeti_input = false;
+					}
+				}
+			}
+
+			if (ripeti_input)
+				cout << "La stringa inserita non è del formato giusto. ";
+		} while (ripeti_input);
+
+		ripeti_input = true;
+		do
+		{
+			string input = "";
+			cout << "Inserire tempo massimo [formato hh:mm:ss] (N.B: NON ora massima): ";
+			cin >> input;
+
+			if (input.length() >= 8)
+			{
+				if (input[2] == ':' && input[5] == ':' && isdigit(input[0]) &&
+					isdigit(input[1]) && isdigit(input[3]) && isdigit(input[4]) &&
+					isdigit(input[6]) && isdigit(input[7]))
+				{
+					int ore = atoi(input.substr(0, 2).c_str());
+					int minuti = atoi(input.substr(3, 2).c_str());
+					int secondi = atoi(input.substr(6, 2).c_str());
+
+					if (ore < 24 && minuti < 60 && secondi < 60)
+					{
+						tempo_massimo = (ore * 3600) + (minuti * 60) + secondi;
+						ripeti_input = false;
+					}
+				}
+			}
+
+			if (ripeti_input)
+				cout << "La stringa inserita non è del formato giusto. ";
+		} while (ripeti_input);
 
 		cout << endl;
 
