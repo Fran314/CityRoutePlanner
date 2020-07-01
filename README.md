@@ -9,6 +9,8 @@ Gli unici file necessari sono:
 - network_temporal_day.csv
 - network_walk.csv
 
+Per qualche motivo, facendo partire il codice in modalità Debug da Visual Studio i file .csv dovevano essere nella stessa cartella dei file di codice, mentre se prendevo l'exe generato dalla modalità Debug e lo facevo partire, i file dovevano essere nella stessa cartella dell'.exe. Se ci sono problemi e il programma non funziona consiglio di spostare i file e riprovare.
+
 Come spiegato in maggior dettaglio nei commenti del codice, l'algoritmo utilizzato è di fatto una modifica dell'Algoritmo di Dijkstra (per la ricerca del percorso ottimale nei grafi pesati). In questo caso, come peso del singolo arco ho utilizzato non solo la durata della tratta ma anche il tempo di attesa da quando si arriva sul nodo analizzato a quando parte la tratta dell'arco analizzato. Così facendo, si dimostra (in modo del tutto analogo all'algoritmo di Dijkstra) che quando si analizza un generico nodo, il percorso utilizzato per arrivare a quel nodo è ottimale (rispetto alla somma dei pesi considerati). Nel nostro caso quindi sarà il percosco che impiega meno tempo di tutti ad arrivare a destinazione. 
 
 ### Problemi
