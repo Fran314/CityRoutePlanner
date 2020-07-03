@@ -21,7 +21,9 @@ struct arco_pt
 struct arco_walk
 {
 	int to_stop;	// to_stop corrisponde a to_stop_I del file
-	int d_walk;
+	int t_walk;		// t_walk corrisponde al tempo impiegato per
+					//	per percorrere la distanza d_walk del file
+					//	supponendo di camminare a 5 km/h
 };
 
 // Struct contenente le etichette di un nodo utilizzate nell'algoritmo
@@ -186,9 +188,11 @@ void inizializzaGrafi()
 		getline(file_corrente, sottoriga, ';');
 
 		getline(file_corrente, sottoriga);
-		int d_walk = atoi(sottoriga.c_str());
-		nuovo_arco_andata.d_walk = d_walk;
-		nuovo_arco_ritorno.d_walk = d_walk;
+		int t_walk = (atoi(sottoriga.c_str()) * 36.0 / 50.0);
+		// Prende la distanza in d_walk e la corregge in tempo
+		//	impiegato per percorrerla supponendo di camminare a 5 km/h
+		nuovo_arco_andata.t_walk = t_walk;
+		nuovo_arco_ritorno.t_walk = t_walk;
 
 		grafo_walk[indice].push_back(nuovo_arco_andata);
 		grafo_walk[to_stop].push_back(nuovo_arco_ritorno);
@@ -360,7 +364,7 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 		}
 		for (arco_walk a : grafo_walk[u])
 		{
-			int arr_time = etichette[u].arr_time + a.d_walk;
+			int arr_time = etichette[u].arr_time + a.t_walk;
 			// Calcolo del tempo di arrivo al nodo successivo sommando
 			//	il tempo di arrivo al nodo attuale e la durata della
 			//	camminata.
