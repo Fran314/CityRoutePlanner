@@ -439,7 +439,7 @@ void TFS(int nodo_iniziale, int nodo_finale, int tempo_iniziale, int tempo_massi
 		//	coda, allora avremmo trovato il percorso ANCHE SE la coda
 		//	al termine dell'algoritmo era vuota. Per risolvere questo
 		//	problema, prima controlliamo che il nodo finale non sia
-		//	stato effettivamente trovato
+		//	stato effettivamente trovato.
 		// Non è stato trovato nessun percorso perché la coda, ad un
 		//	certo punto dell'algoritmo, era vuota.
 		// Allora non esistono percorsi che utilizzino solo mezzi del
